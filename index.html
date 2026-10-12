@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Laboratorio 3D Sandbox: División con Bandejas de Madera</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Three.js + OrbitControls + Canvas Confetti -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 50% 20%, #fdfbf7 0%, #f1f5f9 60%, #e2e8f0 100%);
+      --panel-bg: rgba(255, 255, 255, 0.96);
+      --panel-border: rgba(203, 213, 225, 0.9);
+      --c-vivid: #16a34a;      /* Centenas - Verde */
+      --d-vivid: #eab308;      /* Decenas - Amarillo */
+      --u-vivid: #0284c7;      /* Unidades - Azul */
+      --text: #0f172a;
+      --muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      overflow: hidden;
+      font-family: 'Nunito', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text);
+      width: 100vw;
+      height: 100vh;
+      touch-action: none;
+    }
+
+    #webgl-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Encabezado */
+    header {
+      position: absolute;
+      top: 14px;
+      left: 18px;
+      right: 18px;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      gap: 12px;
+    }
+
+    .brand-box {
+      pointer-events: auto;
+      background: var(--panel-bg);
+      backdrop-filter: blur(14px);
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 2px solid var(--panel-border);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #b45309, #d97706);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+      box-shadow: 0 4px 10px rgba(180, 83, 9, 0.3);
+    }
+
+    .brand-titles h1 {
+      font-family: 'Fredoka', cursive;
+      font-size: 19px;
+      color: #9a3412;
+      line-height: 1.1;
+    }
+
+    .brand-titles p {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .controls-top {
+      pointer-events: auto;
+      background: var(--panel-bg);
+      backdrop-filter: blur(14px);
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 2px solid var(--panel-border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+    }
+
+    .input-grp {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 800;
+      font-size: 13px;
+      color: #334155;
+    }
+
+    .num-input {
+      width: 66px;
+      padding: 4px 6px;
+      border: 2px solid #cbd5e1;
+      border-radius: 12px;
+      background: #f8fafc;
+      color: #0369a1;
+      font-family: 'Fredoka', cursive;
+      font-size: 17px;
+      text-align: center;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .num-input:focus {
+      border-color: #0284c7;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
+    }
+
+    .btn {
+      background: #0284c7;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 14px;
+      font-family: 'Fredoka', cursive;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 10px rgba(2, 132, 199, 0.2);
+    }
+
+    .btn:hover {
+      background: #0369a1;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1.5px solid #cbd5e1;
+      box-shadow: none;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    /* Pizarra Algorítmica Lateral Derecha */
+    .board-hud {
+      position: absolute;
+      top: 80px;
+      right: 18px;
+      z-index: 10;
+      width: 290px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(14px);
+      border-radius: 24px;
+      padding: 16px;
+      border: 2px solid var(--panel-border);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .board-header {
+      font-family: 'Fredoka', cursive;
+      font-size: 16px;
+      color: #0369a1;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .galera-view {
+      font-family: 'Fredoka', cursive;
+      font-size: 26px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 6px 0;
+      border-radius: 14px;
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+    }
+
+    .galera-dividend {
+      padding-right: 6px;
+      color: #0f172a;
+    }
+
+    .galera-box {
+      border-left: 3px solid #0f172a;
+      border-bottom: 3px solid #0f172a;
+      padding: 0 8px 2px 8px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .galera-divisor {
+      line-height: 1;
+      color: #b45309;
+    }
+
+    .galera-quotient {
+      padding-top: 4px;
+      color: #0284c7;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    /* Términos de la división */
+    .terms-guide {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .term-badge {
+      padding: 4px 8px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .term-dividend { background: #f1f5f9; color: #1e293b; border-left: 3px solid #475569; }
+    .term-divisor { background: #fef3c7; color: #92400e; border-left: 3px solid #d97706; }
+    .term-quotient { background: #e0f2fe; color: #075985; border-left: 3px solid #0284c7; }
+    .term-remainder { background: #ffedd5; color: #9a3412; border-left: 3px solid #ea580c; }
+
+    /* Interpretación en Vivo */
+    .live-interpretation {
+      background: #fafaf9;
+      border: 1.5px solid #e7e5e4;
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.5;
+      color: #334155;
+    }
+
+    .live-interpretation strong {
+      color: #0f172a;
+    }
+
+    .guide-tip {
+      background: #eff6ff;
+      border-left: 3.5px solid #0284c7;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #1e3a8a;
+      line-height: 1.4;
+      min-height: 44px;
+    }
+
+    /* Etiqueta flotante de fichas en mano */
+    .hand-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(15, 23, 42, 0.88);
+      color: #38bdf8;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-family: 'Fredoka', cursive;
+      font-size: 13px;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+      z-index: 50;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    /* Barra Inferior */
+    .bottom-toolbar {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      padding: 10px 18px;
+      border-radius: 30px;
+      border: 2px solid var(--panel-border);
+      box-shadow: 0 14px 40px rgba(0,0,0,0.09);
+      pointer-events: auto;
+      max-width: 95vw;
+      overflow-x: auto;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      outline: none;
+      padding: 9px 16px;
+      border-radius: 16px;
+      font-family: 'Fredoka', cursive;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .action-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-ex-d { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .btn-ex-c { background: linear-gradient(135deg, #16a34a, #15803d); }
+    .btn-cancel-hand { background: #dc2626; display: none; }
+    .btn-clear { background: #64748b; }
+
+    /* Presets de Cámara */
+    .cam-presets {
+      position: absolute;
+      left: 18px;
+      bottom: 24px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-cam {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: var(--panel-bg);
+      border: 1.5px solid var(--panel-border);
+      color: #64748b;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      transition: all 0.15s ease;
+    }
+
+    .btn-cam:hover {
+      background: #0284c7;
+      color: #ffffff;
+      transform: scale(1.06);
+    }
+
+    @media (max-width: 960px) {
+      header { flex-direction: column; align-items: stretch; }
+      .brand-box { justify-content: center; }
+      .controls-top { justify-content: center; }
+      .board-hud { top: 140px; width: 230px; padding: 10px; font-size: 11px; }
+      .galera-view { font-size: 20px; }
+      .bottom-toolbar { bottom: 10px; padding: 8px 12px; gap: 6px; }
+      .action-btn { padding: 7px 11px; font-size: 12px; }
+      .cam-presets { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Contenedor WebGL -->
+  <div id="webgl-container"></div>
+
+  <!-- Indicador flotante en mano -->
+  <div class="hand-badge" id="handBadge">
+    <i class="fa-solid fa-layer-group"></i>
+    <span id="handBadgeText">En mano: 0</span>
+  </div>
+
+  <!-- Encabezado -->
+  <header>
+    <div class="brand-box">
+      <div class="brand-icon">
+        <i class="fa-solid fa-boxes-stacked"></i>
+      </div>
+      <div class="brand-titles">
+        <h1>LABORATORIO DE REPARTO EN MADERA</h1>
+        <p>Toma la columna de fichas en la reserva y ve soltando una en cada bandeja</p>
+      </div>
+    </div>
+
+    <div class="controls-top">
+      <div class="input-grp">
+        <span>Dividendo:</span>
+        <input type="number" id="inpDividend" class="num-input" min="10" max="999" value="521">
+      </div>
+      <div class="input-grp">
+        <span>Divisor (Bandejas):</span>
+        <input type="number" id="inpDivisor" class="num-input" min="2" max="9" value="6">
+      </div>
+      <button class="btn" onclick="initSimulation()"><i class="fa-solid fa-play"></i> Cargar</button>
+      <button class="btn btn-secondary" onclick="preset(52, 4)">52 ÷ 4</button>
+      <button class="btn btn-secondary" onclick="preset(36, 5)">36 ÷ 5</button>
+      <button class="btn btn-secondary" onclick="preset(521, 6)">521 ÷ 6</button>
+      <button class="btn btn-secondary" onclick="preset(135, 9)">135 ÷ 9</button>
+    </div>
+  </header>
+
+  <!-- Pizarra Algorítmica con Interpretación en Vivo -->
+  <div class="board-hud">
+    <div class="board-header">
+      <i class="fa-solid fa-chalkboard-user"></i>
+      <span>Pizarra Algorítmica</span>
+    </div>
+
+    <!-- Galera vertical -->
+    <div class="galera-view">
+      <span class="galera-dividend" id="hudDividend">521</span>
+      <div class="galera-box">
+        <span class="galera-divisor" id="hudDivisor">6</span>
+        <span class="galera-quotient" id="hudQuotient">0</span>
+      </div>
+    </div>
+
+    <!-- Identificación de Términos -->
+    <div class="terms-guide">
+      <div class="term-badge term-dividend">
+        <span style="font-size:9.5px; opacity:0.8;">DIVIDENDO</span>
+        <span id="termDvd">521 fichas</span>
+      </div>
+      <div class="term-badge term-divisor">
+        <span style="font-size:9.5px; opacity:0.8;">DIVISOR</span>
+        <span id="termDiv">6 bandejas</span>
+      </div>
+      <div class="term-badge term-quotient">
+        <span style="font-size:9.5px; opacity:0.8;">COCIENTE</span>
+        <span id="termQ">0 por bandeja</span>
+      </div>
+      <div class="term-badge term-remainder">
+        <span style="font-size:9.5px; opacity:0.8;">RESIDUO</span>
+        <span id="termRem">521 en reserva</span>
+      </div>
+    </div>
+
+    <!-- Interpretación Viva Integrada -->
+    <div class="live-interpretation" id="liveInterpText">
+      Repartiendo <strong>521</strong> fichas en <strong>6</strong> bandejas de madera iguales...
+    </div>
+
+    <div class="guide-tip" id="hudTip">
+      Toma una ficha o la columna completa con clic sostenido y ve soltando una en cada bandeja.
+    </div>
+  </div>
+
+  <!-- Presets de Cámara -->
+  <div class="cam-presets">
+    <button class="btn-cam" title="Perspectiva Isométrica 3D" onclick="setCameraView('iso')">
+      <i class="fa-solid fa-cube"></i>
+    </button>
+    <button class="btn-cam" title="Vista Superior (Aérea)" onclick="setCameraView('top')">
+      <i class="fa-solid fa-table-cells"></i>
+    </button>
+    <button class="btn-cam" title="Vista Frontal" onclick="setCameraView('front')">
+      <i class="fa-solid fa-panorama"></i>
+    </button>
+  </div>
+
+  <!-- Barra Inferior -->
+  <div class="bottom-toolbar">
+    <button class="action-btn btn-ex-d" id="btnExD" onclick="exchangeDToU()">
+      <i class="fa-solid fa-arrows-split-up-and-left"></i> Desagrupar (1 Decena → 10 Unidades)
+    </button>
+
+    <button class="action-btn btn-ex-c" id="btnExC" onclick="exchangeCToD()" style="display:none;">
+      <i class="fa-solid fa-arrows-split-up-and-left"></i> Desagrupar (1 Centena → 10 Decenas)
+    </button>
+
+    <button class="action-btn btn-cancel-hand" id="btnCancelHand" onclick="returnHandToBank()">
+      <i class="fa-solid fa-hand-holding"></i> Devolver fichas en mano a la reserva
+    </button>
+
+    <button class="action-btn btn-clear" title="Reiniciar laboratorio" onclick="initSimulation()">
+      <i class="fa-solid fa-rotate-left"></i> Reiniciar Mesa
+    </button>
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. SÍNTESIS ACÚSTICA REALISTA (A PRUEBA DE BLOQUEOS DE NAVEGADOR)
+       ========================================================================= */
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+      return audioCtx;
+    }
+
+    function playRealisticChipSound(type = 'clack') {
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        if (type === 'clack' || type === 'drop') {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gainOsc = ctx.createGain();
+
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(2800 + Math.random() * 300, now);
+          osc2.type = 'triangle';
+          osc2.frequency.setValueAtTime(4100 + Math.random() * 400, now);
+
+          gainOsc.gain.setValueAtTime(0.32, now);
+          gainOsc.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+
+          osc1.connect(gainOsc);
+          osc2.connect(gainOsc);
+          gainOsc.connect(ctx.destination);
+
+          const bufferSize = Math.floor(ctx.sampleRate * 0.035);
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.2));
+          }
+
+          const noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(3200 + Math.random() * 300, now);
+          filter.Q.setValueAtTime(4.0, now);
+
+          const gainNoise = ctx.createGain();
+          gainNoise.gain.setValueAtTime(0.38, now);
+          gainNoise.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+
+          noise.connect(filter);
+          filter.connect(gainNoise);
+          gainNoise.connect(ctx.destination);
+
+          const thud = ctx.createOscillator();
+          const gainThud = ctx.createGain();
+          thud.type = 'sine';
+          thud.frequency.setValueAtTime(170, now);
+          thud.frequency.exponentialRampToValueAtTime(60, now + 0.035);
+          gainThud.gain.setValueAtTime(0.25, now);
+          gainThud.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+          thud.connect(gainThud);
+          gainThud.connect(ctx.destination);
+
+          osc1.start(now); osc2.start(now); noise.start(now); thud.start(now);
+          osc1.stop(now + 0.05); osc2.stop(now + 0.05); noise.stop(now + 0.05); thud.stop(now + 0.05);
+
+        } else if (type === 'pickup') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(3400, now);
+          osc.frequency.exponentialRampToValueAtTime(2200, now + 0.025);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.03);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.035);
+
+        } else if (type === 'exchange') {
+          for (let k = 0; k < 6; k++) {
+            setTimeout(() => playRealisticChipSound('clack'), k * 28 + Math.random() * 10);
+          }
+        }
+      } catch(e) {}
+    }
+
+    /* =========================================================================
+       2. TEXTURAS PROCEDURALES DE MADERA Y FICHAS VIVAS
+       ========================================================================= */
+    function createWoodTexture(isDark = false) {
+      const c = document.createElement('canvas');
+      c.width = 512;
+      c.height = 512;
+      const ctx = c.getContext('2d');
+
+      ctx.fillStyle = isDark ? '#b45309' : '#d97706';
+      ctx.fillRect(0, 0, 512, 512);
+
+      for (let i = 0; i < 512; i += 5) {
+        let alpha = 0.08 + 0.1 * Math.sin(i * 0.05 + Math.random() * 0.02);
+        ctx.fillStyle = isDark ? `rgba(120, 53, 15, ${alpha})` : `rgba(180, 83, 9, ${alpha})`;
+        ctx.fillRect(0, i, 512, 3);
+      }
+
+      ctx.strokeStyle = isDark ? 'rgba(69, 26, 3, 0.4)' : 'rgba(120, 53, 15, 0.3)';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(3, 3, 506, 506);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    function createTokenTexture(label, bgHex, borderHex, textHex) {
+      const c = document.createElement('canvas');
+      c.width = 256;
+      c.height = 256;
+      const ctx = c.getContext('2d');
+
+      ctx.fillStyle = bgHex;
+      ctx.beginPath();
+      ctx.arc(128, 128, 120, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.lineWidth = 15;
+      ctx.strokeStyle = borderHex;
+      ctx.stroke();
+
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.beginPath();
+      ctx.arc(128, 128, 98, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = borderHex;
+      for (let i = 0; i < 16; i++) {
+        const angle = (i * Math.PI * 2) / 16;
+        const x = 128 + Math.cos(angle) * 108;
+        const y = 128 + Math.sin(angle) * 108;
+        ctx.beginPath();
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = textHex;
+      ctx.font = 'bold 112px Fredoka, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, 128, 134);
+
+      return new THREE.CanvasTexture(c);
+    }
+
+    /* =========================================================================
+       3. ESCENA 3D Y TABLERO AMPLIADO (HASTA 9 BANDEJAS)
+       ========================================================================= */
+    const container = document.getElementById('webgl-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xf1f5f9);
+    scene.fog = new THREE.FogExp2(0xf1f5f9, 0.007);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 52, 64);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2.05;
+    controls.minDistance = 15;
+    controls.maxDistance = 130;
+    controls.target.set(0, 2, 0);
+
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xe2e8f0, 0.95);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.25);
+    dirLight.position.set(24, 52, 24);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.camera.near = 0.5;
+    dirLight.shadow.camera.far = 150;
+    const d = 50;
+    dirLight.shadow.camera.left = -d;
+    dirLight.shadow.camera.right = d;
+    dirLight.shadow.camera.top = d;
+    dirLight.shadow.camera.bottom = -d;
+    scene.add(dirLight);
+
+    const softFillLight = new THREE.DirectionalLight(0xbae6fd, 0.4);
+    softFillLight.position.set(-30, 25, -20);
+    scene.add(softFillLight);
+
+    /* =========================================================================
+       4. CONSTRUCCIÓN DE LA MESA AMPLIADA (94 x 46)
+       ========================================================================= */
+    const tableGroup = new THREE.Group();
+
+    const tableMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(94, 1.5, 46),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 })
+    );
+    tableMesh.position.y = -0.75;
+    tableMesh.receiveShadow = true;
+    tableGroup.add(tableMesh);
+
+    const tableBorder = new THREE.Mesh(
+      new THREE.BoxGeometry(95.4, 0.5, 47.4),
+      new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 })
+    );
+    tableBorder.position.y = -1.2;
+    tableGroup.add(tableBorder);
+
+    // Banco de Reserva (Izquierda)
+    const vaultMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(22, 0.25, 38),
+      new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.25 })
+    );
+    vaultMesh.position.set(-33, 0.1, 0);
+    vaultMesh.receiveShadow = true;
+    tableGroup.add(vaultMesh);
+
+    // Divisoria metálica
+    const divider = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.6, 40),
+      new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.3, roughness: 0.3 })
+    );
+    divider.position.set(-20.5, 0.3, 0);
+    tableGroup.add(divider);
+
+    scene.add(tableGroup);
+
+    const traysGroup = new THREE.Group();
+    scene.add(traysGroup);
+
+    const tokensGroup = new THREE.Group();
+    scene.add(tokensGroup);
+
+    /* =========================================================================
+       5. MODELADO DE FICHAS Y MATERIALES (CORREGIDO SIN ERRORES DE SINTAXIS)
+       ========================================================================= */
+    const texC = createTokenTexture('C', '#dcfce7', '#16a34a', '#15803d');
+    const texD = createTokenTexture('D', '#fef9c3', '#eab308', '#854d0e');
+    const texU = createTokenTexture('U', '#e0f2fe', '#0284c7', '#0369a1');
+
+    const geomCylinder = new THREE.CylinderGeometry(1.05, 1.05, 0.34, 32);
+
+    function createTokenMaterial(type) {
+      let topTex = (type === 'c') ? texC : (type === 'd' ? texD : texU);
+      let sideColor = (type === 'c') ? 0x16a34a : (type === 'd' ? 0xeab308 : 0x0284c7);
+
+      return [
+        new THREE.MeshStandardMaterial({ color: sideColor, roughness: 0.3, metalness: 0.1 }),
+        new THREE.MeshStandardMaterial({ map: topTex, roughness: 0.25 }),
+        new THREE.MeshStandardMaterial({ map: topTex, roughness: 0.25 })
+      ];
+    }
+
+    const matTokens = {
+      c: createTokenMaterial('c'),
+      d: createTokenMaterial('d'),
+      u: createTokenMaterial('u')
+    };
+
+    function createToken(type) {
+      const mesh = new THREE.Mesh(geomCylinder, matTokens[type]);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData = { 
+        type: type, 
+        isToken: true,
+        location: 'bank',
+        trayIndex: -1,
+        columnKey: ''
+      };
+      return mesh;
+    }
+
+    /* =========================================================================
+       6. CONSTRUCCIÓN DE BANDEJAS DE MADERA (HASTA 9 BANDEJAS)
+       ========================================================================= */
+    const woodFloorTex = createWoodTexture(false);
+    const woodFrameTex = createWoodTexture(true);
+
+    let dividend = 521;
+    let divisor = 6;
+    let bankTokens = { c: [], d: [], u: [] };
+    let traysTokens = [];
+    const activeAnimations = [];
+
+    function buildTrays(numTrays) {
+      while (traysGroup.children.length > 0) {
+        traysGroup.remove(traysGroup.children[0]);
+      }
+      traysTokens = [];
+
+      const areaWidth = 63;
+      const spacingX = areaWidth / numTrays;
+      const startX = -19 + (spacingX / 2);
+
+      for (let i = 0; i < numTrays; i++) {
+        traysTokens.push({ c: [], d: [], u: [] });
+
+        const trayBox = new THREE.Group();
+        const trayX = startX + (i * spacingX);
+        const trayWidth = spacingX - 1.2;
+
+        const baseMat = new THREE.MeshStandardMaterial({ 
+          map: woodFloorTex, 
+          roughness: 0.45,
+          color: 0xfef3c7
+        });
+        const base = new THREE.Mesh(
+          new THREE.BoxGeometry(trayWidth, 0.2, 34),
+          baseMat
+        );
+        base.position.set(trayX, 0.1, 0);
+        base.receiveShadow = true;
+        trayBox.add(base);
+
+        const rimMat = new THREE.MeshStandardMaterial({ 
+          map: woodFrameTex, 
+          roughness: 0.4,
+          color: 0xb45309
+        });
+
+        const rimBack = new THREE.Mesh(new THREE.BoxGeometry(trayWidth, 0.6, 0.5), rimMat);
+        rimBack.position.set(trayX, 0.4, -17);
+        trayBox.add(rimBack);
+
+        const rimFront = new THREE.Mesh(new THREE.BoxGeometry(trayWidth, 0.6, 0.5), rimMat);
+        rimFront.position.set(trayX, 0.4, 17);
+        trayBox.add(rimFront);
+
+        const rimLeft = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 34), rimMat);
+        rimLeft.position.set(trayX - (trayWidth / 2), 0.4, 0);
+        trayBox.add(rimLeft);
+
+        const rimRight = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 34), rimMat);
+        rimRight.position.set(trayX + (trayWidth / 2), 0.4, 0);
+        trayBox.add(rimRight);
+
+        trayBox.userData = { 
+          isTray: true,
+          index: i, 
+          centerX: trayX,
+          width: trayWidth,
+          baseMesh: base,
+          baseMat: baseMat,
+          rimMat: rimMat
+        };
+        traysGroup.add(trayBox);
+      }
+    }
+
+    function highlightTray(trayIndex) {
+      traysGroup.children.forEach((tray, idx) => {
+        if (idx === trayIndex) {
+          tray.userData.baseMesh.material.color.setHex(0xffedd5);
+          tray.userData.rimMat.color.setHex(0xd97706);
+        } else {
+          tray.userData.baseMesh.material.color.setHex(0xfef3c7);
+          tray.userData.rimMat.color.setHex(0xb45309);
+        }
+      });
+    }
+
+    /* =========================================================================
+       7. POSICIONAMIENTO EN BANCO Y EN BANDEJAS (DESDE ARRIBA HACIA ABAJO)
+       ========================================================================= */
+    function preset(div, dis) {
+      document.getElementById('inpDividend').value = div;
+      document.getElementById('inpDivisor').value = dis;
+      initSimulation();
+    }
+
+    function initSimulation() {
+      dividend = parseInt(document.getElementById('inpDividend').value);
+      divisor = parseInt(document.getElementById('inpDivisor').value);
+
+      if (isNaN(dividend) || dividend < 10 || dividend > 999) {
+        alert("Ingresa un dividendo entre 10 y 999.");
+        return;
+      }
+      if (isNaN(divisor) || divisor < 2 || divisor > 9) {
+        alert("Ingresa un divisor de 2 a 9 bandejas.");
+        return;
+      }
+
+      while (tokensGroup.children.length > 0) {
+        tokensGroup.remove(tokensGroup.children[0]);
+      }
+      activeAnimations.length = 0;
+      clearHand();
+
+      bankTokens = { c: [], d: [], u: [] };
+      buildTrays(divisor);
+
+      const countC = Math.floor(dividend / 100);
+      const countD = Math.floor((dividend % 100) / 10);
+      const countU = dividend % 10;
+
+      for (let i = 0; i < countC; i++) addTokenToBank('c', i);
+      for (let i = 0; i < countD; i++) addTokenToBank('d', i);
+      for (let i = 0; i < countU; i++) addTokenToBank('u', i);
+
+      document.getElementById('btnExC').style.display = (dividend >= 100) ? 'inline-flex' : 'none';
+
+      updateHUD();
+    }
+
+    function addTokenToBank(type, indexOffset = 0, animate = false) {
+      const token = createToken(type);
+      const targetPos = getBankPosition(type, bankTokens[type].length);
+
+      if (animate) {
+        token.position.set(targetPos.x, targetPos.y + 8, targetPos.z);
+        tokensGroup.add(token);
+        activeAnimations.push({
+          mesh: token,
+          startPos: token.position.clone(),
+          endPos: targetPos,
+          progress: 0,
+          speed: 0.14
+        });
+      } else {
+        token.position.copy(targetPos);
+        tokensGroup.add(token);
+      }
+
+      token.userData.location = 'bank';
+      token.userData.trayIndex = -1;
+      bankTokens[type].push(token);
+    }
+
+    function getBankPosition(type, index) {
+      let posX = -38.5;
+      if (type === 'd') posX = -33.0;
+      else if (type === 'u') posX = -27.5;
+
+      const stackIndex = Math.floor(index / 10);
+      const heightInStack = index % 10;
+      const posY = 0.35 + (heightInStack * 0.38);
+      const posZ = -12.0 + (stackIndex * 3.2);
+
+      return new THREE.Vector3(posX, posY, posZ);
+    }
+
+    // Reacomodación ordenada de las fichas dentro de la bandeja desde arriba hacia abajo
+    function reflowTrayTokens(trayIdx) {
+      const tray = traysTokens[trayIdx];
+      if (!tray || !traysGroup.children[trayIdx]) return;
+
+      const orderedList = [...tray.c, ...tray.d, ...tray.u];
+      const trayData = traysGroup.children[trayIdx].userData;
+      const centerX = trayData.centerX;
+      const trayWidth = trayData.width;
+      const useTwoCols = (trayWidth >= 4.6);
+
+      const zTop = -14.2;
+
+      orderedList.forEach((token, indexInTray) => {
+        let posX = centerX;
+        let posZ = zTop;
+        let stack = 0;
+
+        if (useTwoCols) {
+          const col = indexInTray % 2;
+          const row = Math.floor((indexInTray % 22) / 2);
+          stack = Math.floor(indexInTray / 22);
+          const colDist = Math.min(1.22, (trayWidth / 2) - 0.7);
+          posX = centerX + (col === 0 ? -colDist : colDist);
+          posZ = zTop + (row * 2.45);
+        } else {
+          const row = indexInTray % 11;
+          stack = Math.floor(indexInTray / 11);
+          posX = centerX;
+          posZ = zTop + (row * 2.45);
+        }
+
+        const posY = 0.35 + (stack * 0.38);
+        const targetPos = new THREE.Vector3(posX, posY, posZ);
+
+        if (!inHandTokens.includes(token)) {
+          snapTokenTo(token, targetPos, 0.22);
+        }
+      });
+    }
+
+    /* =========================================================================
+       8. CANJES / DESAGRUPACIÓN ACTIVA
+       ========================================================================= */
+    function exchangeCToD() {
+      if (bankTokens.c.length === 0) return;
+      const tokenC = bankTokens.c.pop();
+      tokensGroup.remove(tokenC);
+      playRealisticChipSound('exchange');
+
+      for (let i = 0; i < 10; i++) {
+        setTimeout(() => addTokenToBank('d', 0, true), i * 30);
+      }
+      setTimeout(updateHUD, 350);
+    }
+
+    function exchangeDToU() {
+      if (bankTokens.d.length === 0) return;
+      const tokenD = bankTokens.d.pop();
+      tokensGroup.remove(tokenD);
+      playRealisticChipSound('exchange');
+
+      for (let i = 0; i < 10; i++) {
+        setTimeout(() => addTokenToBank('u', 0, true), i * 30);
+      }
+      setTimeout(updateHUD, 350);
+    }
+
+    /* =========================================================================
+       9. SISTEMA DRAG & DROP POR COLUMNAS Y SUELTA 1 A 1
+       ========================================================================= */
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -2.6);
+    const planeIntersect = new THREE.Vector3();
+
+    let inHandTokens = [];
+    let isHoldingHand = false;
+    let handType = '';
+
+    function updatePointerCoordinates(e) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    function updateHandBadge(clientX, clientY) {
+      const badge = document.getElementById('handBadge');
+      const text = document.getElementById('handBadgeText');
+      const btnCancel = document.getElementById('btnCancelHand');
+      if (inHandTokens.length > 0) {
+        badge.style.display = 'flex';
+        badge.style.left = `${clientX + 14}px`;
+        badge.style.top = `${clientY - 28}px`;
+        const label = handType === 'c' ? 'Centenas' : (handType === 'd' ? 'Decenas' : 'Unidades');
+        text.textContent = `${label} en mano: ${inHandTokens.length}`;
+        btnCancel.style.display = 'inline-flex';
+      } else {
+        badge.style.display = 'none';
+        btnCancel.style.display = 'none';
+      }
+    }
+
+    function onPointerDown(e) {
+      updatePointerCoordinates(e);
+      raycaster.setFromCamera(mouse, camera);
+
+      if (inHandTokens.length > 0) {
+        handleHandDropOnTray();
+        return;
+      }
+
+      const intersects = raycaster.intersectObjects(tokensGroup.children, true);
+
+      if (intersects.length > 0) {
+        let picked = intersects[0].object;
+        while (picked.parent && picked.parent !== tokensGroup) {
+          picked = picked.parent;
+        }
+
+        if (picked.userData && picked.userData.isToken) {
+          const type = picked.userData.type;
+          handType = type;
+
+          if (picked.userData.location === 'bank') {
+            // Toma de torre/columna completa en la reserva
+            const pickX = picked.position.x;
+            const pickZ = picked.position.z;
+
+            const columnStack = bankTokens[type].filter(tok => 
+              Math.abs(tok.position.x - pickX) < 1.4 && 
+              Math.abs(tok.position.z - pickZ) < 1.4
+            );
+
+            const tokensToTake = columnStack.length > 0 ? columnStack : [picked];
+
+            tokensToTake.forEach(tok => {
+              removeFromCurrentLocation(tok);
+              inHandTokens.push(tok);
+            });
+
+          } else {
+            // Si está en una bandeja, toma esa ficha individual
+            removeFromCurrentLocation(picked);
+            inHandTokens.push(picked);
+            reflowTrayTokens(picked.userData.trayIndex);
+          }
+
+          isHoldingHand = true;
+          controls.enabled = false;
+          document.body.style.cursor = 'grabbing';
+          playRealisticChipSound('pickup');
+
+          positionHandStackAtIntersect();
+
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+          updateHandBadge(clientX, clientY);
+
+          e.preventDefault();
+        }
+      }
+    }
+
+    function onPointerMove(e) {
+      updatePointerCoordinates(e);
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      updateHandBadge(clientX, clientY);
+
+      if (!isHoldingHand && inHandTokens.length === 0) {
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(tokensGroup.children, true);
+        document.body.style.cursor = (intersects.length > 0) ? 'grab' : 'default';
+        return;
+      }
+
+      positionHandStackAtIntersect();
+
+      if (inHandTokens.length > 0) {
+        const topPos = inHandTokens[0].position;
+        let hoveredIndex = -1;
+        traysGroup.children.forEach(tray => {
+          const tData = tray.userData;
+          const halfW = tData.width / 2;
+          if (
+            topPos.x >= tData.centerX - halfW &&
+            topPos.x <= tData.centerX + halfW &&
+            topPos.z >= -17 && topPos.z <= 17
+          ) {
+            hoveredIndex = tData.index;
+          }
+        });
+        highlightTray(hoveredIndex);
+      }
+    }
+
+    function positionHandStackAtIntersect() {
+      raycaster.setFromCamera(mouse, camera);
+      if (raycaster.ray.intersectPlane(dragPlane, planeIntersect)) {
+        inHandTokens.forEach((tok, idx) => {
+          tok.position.x = planeIntersect.x;
+          tok.position.z = planeIntersect.z;
+          tok.position.y = 2.4 + (idx * 0.42);
+        });
+      }
+    }
+
+    function onPointerUp(e) {
+      if (inHandTokens.length === 0) {
+        controls.enabled = true;
+        document.body.style.cursor = 'default';
+        highlightTray(-1);
+        return;
+      }
+
+      handleHandDropOnTray();
+    }
+
+    function handleHandDropOnTray() {
+      if (inHandTokens.length === 0) return;
+
+      const topPos = inHandTokens[0].position.clone();
+
+      let targetTrayIndex = -1;
+      traysGroup.children.forEach(tray => {
+        const tData = tray.userData;
+        const halfW = tData.width / 2;
+        if (
+          topPos.x >= tData.centerX - halfW &&
+          topPos.x <= tData.centerX + halfW &&
+          topPos.z >= -17 && topPos.z <= 17
+        ) {
+          targetTrayIndex = tData.index;
+        }
+      });
+
+      const inBank = (topPos.x >= -45 && topPos.x <= -20 && topPos.z >= -19 && topPos.z <= 19);
+
+      if (targetTrayIndex !== -1) {
+        // Deposita 1 ficha en la bandeja
+        const tokenToPlace = inHandTokens.pop();
+        const type = tokenToPlace.userData.type;
+
+        traysTokens[targetTrayIndex][type].push(tokenToPlace);
+        tokenToPlace.userData.location = 'tray';
+        tokenToPlace.userData.trayIndex = targetTrayIndex;
+
+        reflowTrayTokens(targetTrayIndex);
+        playRealisticChipSound('drop');
+
+        if (inHandTokens.length === 0) {
+          clearHand();
+        } else {
+          positionHandStackAtIntersect();
+        }
+
+      } else if (inBank) {
+        returnHandToBank();
+      } else {
+        returnHandToBank();
+      }
+
+      updateHUD();
+    }
+
+    function returnHandToBank() {
+      while (inHandTokens.length > 0) {
+        const tok = inHandTokens.pop();
+        const type = tok.userData.type;
+        tok.userData.location = 'bank';
+        tok.userData.trayIndex = -1;
+        bankTokens[type].push(tok);
+
+        const targetPos = getBankPosition(type, bankTokens[type].length - 1);
+        snapTokenTo(tok, targetPos);
+      }
+      playRealisticChipSound('clack');
+      clearHand();
+      updateHUD();
+    }
+
+    function clearHand() {
+      inHandTokens = [];
+      isHoldingHand = false;
+      controls.enabled = true;
+      document.body.style.cursor = 'default';
+      highlightTray(-1);
+      document.getElementById('handBadge').style.display = 'none';
+      document.getElementById('btnCancelHand').style.display = 'none';
+    }
+
+    function removeFromCurrentLocation(token) {
+      const type = token.userData.type;
+      if (token.userData.location === 'bank') {
+        const idx = bankTokens[type].indexOf(token);
+        if (idx !== -1) bankTokens[type].splice(idx, 1);
+      } else if (token.userData.location === 'tray') {
+        const tIdx = token.userData.trayIndex;
+        if (tIdx !== -1 && traysTokens[tIdx]) {
+          const idx = traysTokens[tIdx][type].indexOf(token);
+          if (idx !== -1) traysTokens[tIdx][type].splice(idx, 1);
+        }
+      }
+    }
+
+    function snapTokenTo(mesh, targetPos, speed = 0.18) {
+      const existing = activeAnimations.find(a => a.mesh === mesh);
+      if (existing) {
+        existing.endPos.copy(targetPos);
+      } else {
+        activeAnimations.push({
+          mesh: mesh,
+          startPos: mesh.position.clone(),
+          endPos: targetPos.clone(),
+          progress: 0,
+          speed: speed
+        });
+      }
+    }
+
+    renderer.domElement.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+
+    /* =========================================================================
+       10. CONTROL PEDAGÓGICO E INTERPRETACIÓN DIRECTA EN PIZARRA
+       ========================================================================= */
+    function updateHUD() {
+      let minTotal = Infinity;
+      let minC = Infinity, maxC = -Infinity;
+      let minD = Infinity, maxD = -Infinity;
+      let minU = Infinity, maxU = -Infinity;
+
+      traysTokens.forEach(t => {
+        const c = t.c.length;
+        const d = t.d.length;
+        const u = t.u.length;
+        const total = (c * 100) + (d * 10) + u;
+
+        if (total < minTotal) minTotal = total;
+        if (c < minC) minC = c; if (c > maxC) maxC = c;
+        if (d < minD) minD = d; if (d > maxD) maxD = d;
+        if (u < minU) minU = u; if (u > maxU) maxU = u;
+      });
+
+      if (minTotal === Infinity) minTotal = 0;
+
+      const remC = bankTokens.c.length;
+      const remD = bankTokens.d.length;
+      const remU = bankTokens.u.length;
+      const totalRem = (remC * 100) + (remD * 10) + remU;
+
+      document.getElementById('hudDividend').textContent = dividend;
+      document.getElementById('hudDivisor').textContent = divisor;
+      document.getElementById('hudQuotient').textContent = minTotal;
+
+      document.getElementById('termDvd').textContent = `${dividend} fichas`;
+      document.getElementById('termDiv').textContent = `${divisor} bandejas`;
+      document.getElementById('termQ').textContent = `${minTotal} por bandeja`;
+      document.getElementById('termRem').textContent = `${totalRem} en reserva`;
+
+      document.getElementById('btnExC').disabled = (remC === 0);
+      document.getElementById('btnExD').disabled = (remD === 0);
+
+      const isCEqual = (minC === maxC);
+      const isDEqual = (minD === maxD);
+      const isUEqual = (minU === maxU);
+      const isBalanced = (isCEqual && isDEqual && isUEqual);
+
+      // Interpretación viva directa
+      const liveBox = document.getElementById('liveInterpText');
+      if (isBalanced) {
+        liveBox.innerHTML = `
+          Repartiendo <strong>${dividend}</strong> fichas en <strong>${divisor}</strong> bandejas de madera iguales.<br>
+          A cada bandeja le corresponden <strong style="color:#0284c7;">${minTotal}</strong> fichas y sobran <strong style="color:#ea580c;">${totalRem}</strong> en reserva.
+        `;
+      } else {
+        liveBox.innerHTML = `
+          Repartiendo <strong>${dividend}</strong> fichas en <strong>${divisor}</strong> bandejas...<br>
+          <span style="color:#b45309; font-weight:800;">⚠️ Completa la ronda para que todas las bandejas tengan lo mismo.</span>
+        `;
+      }
+
+      if (!isCEqual) {
+        setTip(`Las centenas están desbalanceadas. Pon 1 ficha C en cada bandeja para igualarlas.`);
+      } else if (!isDEqual) {
+        setTip(`Las decenas están desbalanceadas. Completa la ronda con 1 ficha D en cada bandeja.`);
+      } else if (!isUEqual) {
+        setTip(`Las unidades están desbalanceadas. Pon 1 ficha U en cada bandeja.`);
+      } else {
+        if (remC >= divisor) {
+          setTip(`Tienes ${remC} centenas en reserva. Toma la columna y ve soltando 1 en cada bandeja.`);
+        } else if (remC > 0) {
+          setTip(`Sobra ${remC} centena que no alcanza para las ${divisor} bandejas. ¡Pulsa "Desagrupar Centena"!`);
+        } else if (remD >= divisor) {
+          setTip(`Tienes ${remD} decenas en reserva. Toma la columna con clic sostenido y reparte 1 en cada bandeja[cite: 2].`);
+        } else if (remD > 0) {
+          setTip(`Sobra ${remD} decena. Como no alcanza para todas las bandejas, pulsa "Desagrupar Decena"[cite: 2].`);
+        } else if (remU >= divisor) {
+          setTip(`Tienes ${remU} unidades listas. Toma la torre y repártelas equitativamente[cite: 2].`);
+        } else {
+          setTip(`¡Reparto completado con éxito! Todas las bandejas tienen exactamente ${minTotal} fichas.`);
+          if (totalRem < divisor) {
+            confetti({ particleCount: 75, spread: 70, origin: { y: 0.6 } });
+          }
+        }
+      }
+    }
+
+    function setTip(text) {
+      document.getElementById('hudTip').textContent = text;
+    }
+
+    /* =========================================================================
+       11. CÁMARAS
+       ========================================================================= */
+    function setCameraView(type) {
+      playRealisticChipSound('clack');
+      if (type === 'iso') animateCameraTo(0, 52, 64, 0, 2, 0);
+      else if (type === 'top') animateCameraTo(0, 78, 0.1, 0, 0, 0);
+      else if (type === 'front') animateCameraTo(0, 18, 68, 0, 2, 0);
+    }
+
+    function animateCameraTo(x, y, z, tx, ty, tz) {
+      const startPos = camera.position.clone();
+      const endPos = new THREE.Vector3(x, y, z);
+      const startTarget = controls.target.clone();
+      const endTarget = new THREE.Vector3(tx, ty, tz);
+
+      let p = 0;
+      const interval = setInterval(() => {
+        p += 0.06;
+        if (p >= 1) {
+          p = 1;
+          clearInterval(interval);
+        }
+        camera.position.lerpVectors(startPos, endPos, p);
+        controls.target.lerpVectors(startTarget, endTarget, p);
+        controls.update();
+      }, 16);
+    }
+
+    /* =========================================================================
+       12. BUCLE DE RENDERIZADO
+       ========================================================================= */
+    function animate() {
+      requestAnimationFrame(animate);
+
+      for (let i = activeAnimations.length - 1; i >= 0; i--) {
+        const anim = activeAnimations[i];
+        anim.progress += anim.speed;
+        if (anim.progress >= 1) {
+          anim.progress = 1;
+          anim.mesh.position.copy(anim.endPos);
+          activeAnimations.splice(i, 1);
+        } else {
+          const ease = Math.sin(anim.progress * (Math.PI / 2));
+          anim.mesh.position.lerpVectors(anim.startPos, anim.endPos, ease);
+          anim.mesh.position.y += Math.sin(anim.progress * Math.PI) * 2.2;
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      animate();
+      setTimeout(initSimulation, 250);
+    });
+  </script>
+</body>
+</html>
